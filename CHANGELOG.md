@@ -6,6 +6,8 @@ Docs: https://docs.openclaw.ai
 
 ### Breaking
 
+- Plugins/hooks: `before_tool_call` handlers returning explicit `{ block: false }` can no longer override a prior `{ block: true }` from a higher-priority handler. Same applies to `{ cancel: false }` in `message_sending`. Plugins that intentionally returned `false` to clear prior decisions will need to be updated; plugins that returned `undefined` or omitted the field are unaffected.
+
 ### Changes
 
 - Control UI/markdown preview: restyle the agent workspace file preview dialog with a frosted backdrop, sized panel, and styled header, and integrate `@create-markdown/preview` v2 system theme for rich markdown rendering (headings, tables, code blocks, callouts, blockquotes) that auto-adapts to the app's light/dark design tokens. (#53411) Thanks @BunsDev.
@@ -86,6 +88,7 @@ Docs: https://docs.openclaw.ai
 - Gateway/supervision: stop lock conflicts from crash-looping under launchd and systemd by keeping the duplicate process in a retry wait instead of exiting as a failure while another healthy gateway still owns the lock. Fixes #52922. Thanks @vincentkoc.
 - Gateway/auth: require auth for canvas routes and admin scope for agent session reset, so anonymous canvas access and non-admin reset requests fail closed.
 - Release/install: keep previously released bundled plugins and Control UI assets in published openclaw npm installs, and fail release checks when those shipped artifacts are missing. Thanks @vincentkoc.
+- Security/hooks: make `block: true` in `before_tool_call` and `cancel: true` in `message_sending` sticky so that once any handler sets them, lower-priority handlers cannot clear them via explicit `false`. This fixes an inconsistency with `before_message_write` (which was already sticky) and prevents plugins from silently neutralizing security hooks like Sage.
 
 ## 2026.3.22
 
