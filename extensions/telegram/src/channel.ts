@@ -7,8 +7,11 @@ import { createAllowlistProviderRouteAllowlistWarningCollector } from "openclaw/
 import { attachChannelToResult } from "openclaw/plugin-sdk/channel-send-result";
 import { createChatChannelPlugin } from "openclaw/plugin-sdk/core";
 import { createChannelDirectoryAdapter } from "openclaw/plugin-sdk/directory-runtime";
-import { resolveExecApprovalCommandDisplay } from "openclaw/plugin-sdk/infra-runtime";
-import { buildExecApprovalPendingReplyPayload } from "openclaw/plugin-sdk/infra-runtime";
+import {
+  buildExecApprovalPendingReplyPayload,
+  buildPluginApprovalRequestMessage,
+  resolveExecApprovalCommandDisplay,
+} from "openclaw/plugin-sdk/infra-runtime";
 import {
   resolveOutboundSendDep,
   type OutboundSendDeps,
@@ -451,6 +454,21 @@ export const telegramPlugin = createChatChannelPlugin({
           accountId: target.accountId ?? undefined,
           ...(Number.isFinite(threadId) ? { messageThreadId: threadId } : {}),
         }).catch(() => {});
+      },
+      buildPluginPendingPayload: ({ request, nowMs }) => {
+        const text = buildPluginApprovalRequestMessage(request, nowMs);
+        const buttons = buildTelegramExecApprovalButtons(request.id);
+        if (!buttons) {
+          return { text };
+        }
+        return {
+          text,
+          channelData: {
+            telegram: {
+              buttons,
+            },
+          },
+        };
       },
     },
     directory: createChannelDirectoryAdapter({
