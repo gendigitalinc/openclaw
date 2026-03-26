@@ -12,10 +12,27 @@ import { extractTextCached } from "./message-extract.ts";
 import { isToolResultMessage } from "./message-normalizer.ts";
 import { formatToolOutputForSidebar, getTruncatedPreview } from "./tool-helpers.ts";
 
+function readExecToolApprovalStatus(message: unknown): "pending" | "unavailable" | undefined {
+  const m = message as Record<string, unknown>;
+  const details = m.details;
+  if (!details || typeof details !== "object" || Array.isArray(details)) {
+    return undefined;
+  }
+  const d = details as Record<string, unknown>;
+  if (d.status === "approval-pending") {
+    return "pending";
+  }
+  if (d.status === "approval-unavailable") {
+    return "unavailable";
+  }
+  return undefined;
+}
+
 export function extractToolCards(message: unknown): ToolCard[] {
   const m = message as Record<string, unknown>;
   const content = normalizeContent(m.content);
   const cards: ToolCard[] = [];
+  const execApprovalStatus = readExecToolApprovalStatus(message);
 
   for (const item of content) {
     const isToolCall =
@@ -36,7 +53,7 @@ export function extractToolCards(message: unknown): ToolCard[] {
     }
     const text = extractToolText(item);
     const name = typeof item.name === "string" ? item.name : "tool";
-    cards.push({ kind: "result", name, text });
+    cards.push({ kind: "result", name, text, execApprovalStatus });
   }
 
   if (isToolResultMessage(message) && !cards.some((card) => card.kind === "result")) {
@@ -45,7 +62,7 @@ export function extractToolCards(message: unknown): ToolCard[] {
       (typeof m.tool_name === "string" && m.tool_name) ||
       "tool";
     const text = extractTextCached(message) ?? undefined;
-    cards.push({ kind: "result", name, text });
+    cards.push({ kind: "result", name, text, execApprovalStatus });
   }
 
   return cards;
@@ -63,9 +80,15 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
           onOpenSidebar!(formatToolOutputForSidebar(card.text!));
           return;
         }
+        const emptyBody =
+          card.execApprovalStatus === "pending"
+            ? "*Awaiting operator approval before this command can run.*"
+            : card.execApprovalStatus === "unavailable"
+              ? "*Approval is unavailable for this command.*"
+              : "*No output — tool completed successfully.*";
         const info = `## ${display.label}\n\n${
           detail ? `**Command:** \`${detail}\`\n\n` : ""
-        }*No output — tool completed successfully.*`;
+        }${emptyBody}`;
         onOpenSidebar!(info);
       }
     : undefined;
@@ -74,6 +97,12 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
   const showCollapsed = hasText && !isShort;
   const showInline = hasText && isShort;
   const isEmpty = !hasText;
+  const emptyStatusLabel =
+    card.execApprovalStatus === "pending"
+      ? "Awaiting approval"
+      : card.execApprovalStatus === "unavailable"
+        ? "Approval unavailable"
+        : "Completed";
 
   return html`
     <div
@@ -115,7 +144,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
       ${
         isEmpty
           ? html`
-              <div class="chat-tool-card__status-text muted">Completed</div>
+              <div class="chat-tool-card__status-text muted">${emptyStatusLabel}</div>
             `
           : nothing
       }
