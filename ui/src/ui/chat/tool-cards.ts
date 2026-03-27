@@ -110,35 +110,29 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
       @click=${handleClick}
       role=${canClick ? "button" : nothing}
       tabindex=${canClick ? "0" : nothing}
-      @keydown=${
-        canClick
-          ? (e: KeyboardEvent) => {
-              if (e.key !== "Enter" && e.key !== " ") {
-                return;
-              }
-              e.preventDefault();
-              handleClick?.();
+      @keydown=${canClick
+        ? (e: KeyboardEvent) => {
+            if (e.key !== "Enter" && e.key !== " ") {
+              return;
             }
-          : nothing
-      }
+            e.preventDefault();
+            handleClick?.();
+          }
+        : nothing}
     >
       <div class="chat-tool-card__header">
         <div class="chat-tool-card__title">
           <span class="chat-tool-card__icon">${icons[display.icon]}</span>
           <span>${display.label}</span>
         </div>
-        ${
-          canClick
-            ? html`<span class="chat-tool-card__action"
+        ${canClick
+          ? html`<span class="chat-tool-card__action"
               >${hasText ? "View" : ""} ${icons.check}</span
             >`
-            : nothing
-        }
-        ${
-          isEmpty && !canClick
-            ? html`<span class="chat-tool-card__status">${icons.check}</span>`
-            : nothing
-        }
+          : nothing}
+        ${isEmpty && !canClick
+          ? html`<span class="chat-tool-card__status">${icons.check}</span>`
+          : nothing}
       </div>
       ${detail ? html`<div class="chat-tool-card__detail">${detail}</div>` : nothing}
       ${isEmpty
