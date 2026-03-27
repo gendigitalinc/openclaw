@@ -141,18 +141,12 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
         }
       </div>
       ${detail ? html`<div class="chat-tool-card__detail">${detail}</div>` : nothing}
-      ${
-        isEmpty
-          ? html`
-              <div class="chat-tool-card__status-text muted">${emptyStatusLabel}</div>
-            `
-          : nothing
-      }
-      ${
-        showCollapsed
-          ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`
-          : nothing
-      }
+      ${isEmpty
+        ? html` <div class="chat-tool-card__status-text muted">${emptyStatusLabel}</div> `
+        : nothing}
+      ${showCollapsed
+        ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`
+        : nothing}
       ${showInline ? html`<div class="chat-tool-card__inline mono">${card.text}</div>` : nothing}
     </div>
   `;
