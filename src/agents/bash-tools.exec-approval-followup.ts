@@ -1,3 +1,4 @@
+import { INTERNAL_MESSAGE_CHANNEL, isInternalMessageChannel } from "../utils/message-channel.js";
 import { callGatewayTool } from "./tools/gateway.js";
 
 type ExecApprovalFollowupParams = {
@@ -40,18 +41,29 @@ export async function sendExecApprovalFollowup(
       ? String(params.turnSourceThreadId)
       : undefined;
 
+  // Webchat (internal channel) has no outbound delivery route — the gateway would
+  // try to remap it to a configured external channel and fail. Skip delivery for
+  // internal channels and explicitly route the agent run to the internal channel.
+  const hasExternalDeliveryPair = Boolean(channel && to) && !isInternalMessageChannel(channel);
+
   await callGatewayTool(
     "agent",
     { timeoutMs: 60_000 },
     {
       sessionKey,
       message: buildExecApprovalFollowupPrompt(resultText),
-      deliver: true,
+      deliver: hasExternalDeliveryPair,
       bestEffortDeliver: true,
-      channel: channel && to ? channel : undefined,
-      to: channel && to ? to : undefined,
-      accountId: channel && to ? params.turnSourceAccountId?.trim() || undefined : undefined,
-      threadId: channel && to ? threadId : undefined,
+      channel: hasExternalDeliveryPair
+        ? channel
+        : isInternalMessageChannel(channel)
+          ? INTERNAL_MESSAGE_CHANNEL
+          : undefined,
+      to: hasExternalDeliveryPair ? to : undefined,
+      accountId: hasExternalDeliveryPair
+        ? params.turnSourceAccountId?.trim() || undefined
+        : undefined,
+      threadId: hasExternalDeliveryPair ? threadId : undefined,
       idempotencyKey: `exec-approval-followup:${params.approvalId}`,
     },
     { expectFinal: true },
