@@ -41,10 +41,15 @@ export async function sendExecApprovalFollowup(
       ? String(params.turnSourceThreadId)
       : undefined;
 
-  // Webchat (internal channel) has no outbound delivery route — the gateway would
-  // try to remap it to a configured external channel and fail. Skip delivery for
-  // internal channels and explicitly route the agent run to the internal channel.
-  const hasExternalDeliveryPair = Boolean(channel && to) && !isInternalMessageChannel(channel);
+  const isInternal = isInternalMessageChannel(channel);
+
+  // Webchat (internal channel) has no outbound delivery route — the gateway
+  // would try to remap it to a configured external channel and fail.  Skip
+  // `deliver` for internal channels and explicitly route the agent run to
+  // INTERNAL_MESSAGE_CHANNEL.  For external channels, keep `deliver: true`
+  // even when an explicit `to` is missing so the gateway can fall back to
+  // session-level implicit routing (last channel / default target).
+  const hasExplicitExternalPair = Boolean(channel && to) && !isInternal;
 
   await callGatewayTool(
     "agent",
@@ -52,18 +57,18 @@ export async function sendExecApprovalFollowup(
     {
       sessionKey,
       message: buildExecApprovalFollowupPrompt(resultText),
-      deliver: hasExternalDeliveryPair,
+      deliver: !isInternal,
       bestEffortDeliver: true,
-      channel: hasExternalDeliveryPair
+      channel: hasExplicitExternalPair
         ? channel
-        : isInternalMessageChannel(channel)
+        : isInternal
           ? INTERNAL_MESSAGE_CHANNEL
           : undefined,
-      to: hasExternalDeliveryPair ? to : undefined,
-      accountId: hasExternalDeliveryPair
+      to: hasExplicitExternalPair ? to : undefined,
+      accountId: hasExplicitExternalPair
         ? params.turnSourceAccountId?.trim() || undefined
         : undefined,
-      threadId: hasExternalDeliveryPair ? threadId : undefined,
+      threadId: hasExplicitExternalPair ? threadId : undefined,
       idempotencyKey: `exec-approval-followup:${params.approvalId}`,
     },
     { expectFinal: true },
